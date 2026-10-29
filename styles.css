@@ -193,7 +193,6 @@ textarea.field-control { resize: vertical; }
   .goal-dialog form { padding: 21px; }
   footer { margin-top: 28px; }
 }
-
 /* Dark workspace */
 :root {
   --ink: #edf2ff; --muted: #8d98b5; --line: #222b43; --paper: #090d18;
