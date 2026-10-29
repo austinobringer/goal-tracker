@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-QG8PZ4YGFY"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-QG8PZ4YGFY');
+  </script>
+
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0b1020">
+  <title>Little Wins | Goal Tracker</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <script src="config.js"></script>
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <a class="brand" href="#" aria-label="Little Wins home">
+        <span class="brand-mark">✳</span>
+        <span>little<span class="brand-light">wins</span></span>
+      </a>
+      <div class="topbar-right">
+        <nav class="main-nav" aria-label="Primary navigation">
+          <button class="nav-button active" id="goalsNavButton" type="button">Goals</button>
+          <button class="nav-button" id="competitionsNavButton" type="button">Competitions</button>
+        </nav>
+        <span class="connection-dot" id="connectionDot"></span>
+        <span class="connection-label" id="connectionLabel">Not connected</span>
+        <button class="button button-quiet hidden" id="signOutButton" type="button">Sign out</button>
+      </div>
+    </header>
+
+    <main>
+      <section class="welcome-row" id="welcomeHero">
+        <div>
+          <p class="eyebrow">A little progress adds up</p>
+          <h1>Make room for <span class="headline-accent">what matters.</span></h1>
+          <p class="lede">Keep your goals visible, celebrate the small steps, and make today count.</p>
+        </div>
+        <div class="welcome-art" aria-hidden="true">
+          <div class="sun"></div><div class="orbit orbit-one"></div><div class="orbit orbit-two"></div>
+          <span class="spark spark-one">✦</span><span class="spark spark-two">✳</span>
+        </div>
+      </section>
+
+      <section class="connect-panel" id="connectPanel">
+        <div class="connect-icon">↗</div>
+        <div class="connect-copy">
+          <h2>Connect your shared goals</h2>
+          <p>Sign in with Google to read and update the shared spreadsheet. Your goals stay in your team's sheet.</p>
+          <p class="small-note">You'll only connect once per session, unless Google asks you to authorize again.</p>
+        </div>
+        <button class="button button-primary" id="connectButton" type="button">Connect Google <span aria-hidden="true">↗</span></button>
+      </section>
+
+      <section id="dashboard" class="hidden">
+        <div class="summary-grid">
+          <article class="summary-card summary-feature">
+            <div class="summary-top"><span class="summary-label">Goals in motion</span><span class="summary-icon">✳</span></div>
+            <div class="summary-value" id="activeCount">0</div>
+            <div class="summary-foot">Active goals on your list</div>
+          </article>
+          <article class="summary-card">
+            <div class="summary-top"><span class="summary-label">Completed</span><span class="summary-icon mint">✓</span></div>
+            <div class="summary-value" id="completedCount">0</div>
+            <div class="summary-foot">Small wins, stacked up</div>
+          </article>
+          <article class="summary-card">
+            <div class="summary-top"><span class="summary-label">Due soon</span><span class="summary-icon peach">◷</span></div>
+            <div class="summary-value" id="dueSoonCount">0</div>
+            <div class="summary-foot">Due in the next 14 days</div>
+          </article>
+        </div>
+
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">The big picture</p>
+            <h2>Your Goals</h2>
+          </div>
+          <div class="heading-actions">
+            <label class="search-wrap"><span aria-hidden="true">⌕</span><input id="searchInput" type="search" placeholder="Find a goal..." aria-label="Search goals"></label>
+            <select id="statusFilter" class="select-control" aria-label="Filter goals">
+              <option value="active">Active goals</option>
+              <option value="all">All goals</option>
+              <option value="completed">Completed</option>
+            </select>
+            <button class="button button-primary" id="newGoalButton" type="button">＋ New goal</button>
+          </div>
+        </div>
+
+        <div id="notice" class="notice hidden" role="status"></div>
+        <div class="goals-workspace">
+          <div class="goals-list">
+            <div class="goals-list-heading"><span>All goals</span><span id="goalListCount"></span></div>
+            <div id="goalsGrid" class="goals-grid"></div>
+          </div>
+          <section id="goalDetail" class="goal-detail" aria-live="polite"></section>
+        </div>
+        <div id="emptyState" class="empty-state hidden">
+          <div class="empty-illustration">✳</div>
+          <h3>Your next chapter starts here.</h3>
+          <p>Add a goal, pick a first step, and give it somewhere to grow.</p>
+          <button class="button button-primary" id="emptyNewGoalButton" type="button">Create your first goal</button>
+        </div>
+        <p class="sheet-footnote"><span class="tiny-dot"></span> Shared live with your Google Sheet <button id="refreshButton" class="text-button" type="button">Refresh data ↻</button></p>
+      </section>
+      <section id="competitionsPage" class="hidden">
+        <div class="section-heading page-heading">
+          <div><p class="eyebrow">Team momentum</p><h2>Competitions</h2></div>
+          <button class="button button-primary" id="newCompetitionButton" type="button">＋ New competition</button>
+        </div>
+        <div id="competitionsGrid" class="competition-grid"></div>
+        <div id="competitionEmptyState" class="empty-state hidden">
+          <div class="empty-illustration">◎</div><h3>No competitions yet.</h3>
+          <p>Set a time range and invite the team to make progress together.</p>
+        </div>
+        <section id="competitionDetail" class="competition-detail hidden"></section>
+      </section>
+    </main>
+    <footer><span>✳ littlewins</span><span>Progress over perfection.</span></footer>
+  </div>
+
+  <dialog id="goalDialog" class="goal-dialog">
+    <form id="goalForm">
+      <div class="dialog-header">
+        <div><p class="eyebrow" id="dialogEyebrow">Make it happen</p><h2 id="dialogTitle">Create a goal</h2></div>
+        <button type="button" class="icon-button" id="closeDialogButton" aria-label="Close dialog">×</button>
+      </div>
+      <input type="hidden" id="goalId">
+      <label class="field-label" for="goalName">Goal name <span>*</span></label>
+      <input class="field-control" id="goalName" maxlength="120" required placeholder="e.g. Build an emergency fund">
+      <label class="field-label" for="goalDescription">A little more context</label>
+      <textarea class="field-control" id="goalDescription" rows="2" maxlength="500" placeholder="Why does this matter to you?"></textarea>
+      <label class="field-label" for="goalCompetition">Team competition</label>
+      <select class="field-control" id="goalCompetition"><option value="">No competition</option></select>
+      <div class="field-row">
+        <div><label class="field-label" for="startValue">Starting value <span>*</span></label><input class="field-control" id="startValue" type="number" step="any" required placeholder="0"></div>
+        <div><label class="field-label" for="endValue">Ending value <span>*</span></label><input class="field-control" id="endValue" type="number" step="any" required placeholder="1000"></div>
+      </div>
+      <label class="checkbox-field"><input id="goalCumulative" type="checkbox"><span><strong>Cumulative goal</strong><small>Each progress entry is added to the running total.</small></span></label>
+      <div class="field-row">
+        <div><label class="field-label" for="goalStartDate">Start date <span>*</span></label><input class="field-control" id="goalStartDate" type="date" required><span class="field-control date-display hidden" id="goalStartDateDisplay"></span></div>
+        <div><label class="field-label" for="goalEndDate">End date <span>*</span></label><input class="field-control" id="goalEndDate" type="date" required><span class="field-control date-display hidden" id="goalEndDateDisplay"></span></div>
+      </div>
+      <div class="field-row">
+        <div><label class="field-label" for="goalUnit">Units (Plural)</label><input class="field-control" id="goalUnit" maxlength="30" value="$" placeholder="$, books, miles..."></div>
+        <div><label class="field-label" for="goalStatus">Status</label><select class="field-control" id="goalStatus"><option value="Active">Active</option><option value="Completed">Completed</option><option value="Paused">Paused</option></select></div>
+      </div>
+      <div class="dialog-error hidden" id="dialogError" role="alert"></div>
+      <div class="dialog-actions"><button type="button" class="button button-quiet" id="cancelDialogButton">Cancel</button><button type="submit" class="button button-primary" id="saveGoalButton">Save goal</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="competitionDialog" class="goal-dialog">
+    <form id="competitionForm">
+      <div class="dialog-header"><div><p class="eyebrow">Team momentum</p><h2>Create a competition</h2></div><button type="button" class="icon-button" id="closeCompetitionButton" aria-label="Close dialog">×</button></div>
+      <label class="field-label" for="competitionName">Competition name <span>*</span></label>
+      <input class="field-control" id="competitionName" required maxlength="120" placeholder="Spring challenge">
+      <label class="field-label" for="competitionDescription">Description</label>
+      <textarea class="field-control" id="competitionDescription" rows="2" maxlength="500" placeholder="What are we working toward?"></textarea>
+      <div class="field-row">
+        <div><label class="field-label" for="competitionStartDate">Start date <span>*</span></label><input class="field-control" id="competitionStartDate" type="date" required></div>
+        <div><label class="field-label" for="competitionEndDate">End date <span>*</span></label><input class="field-control" id="competitionEndDate" type="date" required></div>
+      </div>
+      <div class="dialog-error hidden" id="competitionError" role="alert"></div>
+      <div class="dialog-actions"><button type="button" class="button button-quiet" id="cancelCompetitionButton">Cancel</button><button type="submit" class="button button-primary">Create competition</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="progressDialog" class="goal-dialog">
+    <form id="progressForm">
+      <div class="dialog-header"><div><p class="eyebrow">Every step counts</p><h2 id="progressTitle">Add progress</h2></div><button type="button" class="icon-button" id="closeProgressButton" aria-label="Close dialog">×</button></div>
+      <input type="hidden" id="progressGoalId">
+      <label class="field-label" for="progressValue">Progress value <span>*</span></label>
+      <input class="field-control" id="progressValue" type="number" step="any" required>
+      <label class="field-label" for="progressDate">Date <span>*</span></label>
+      <input class="field-control" id="progressDate" type="date" required>
+      <label class="field-label" for="progressNote">Note</label>
+      <textarea class="field-control" id="progressNote" rows="2" maxlength="300" placeholder="What did you accomplish?"></textarea>
+      <div class="dialog-error hidden" id="progressError" role="alert"></div>
+      <div class="dialog-actions"><button type="button" class="button button-quiet" id="cancelProgressButton">Close</button><button type="submit" class="button button-primary" id="saveProgressButton">Add entry</button></div>
+    </form>
+  </dialog>
+
+  <div class="toast hidden" id="toast" role="status"></div>
+</body>
+</html>
