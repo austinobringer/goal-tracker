@@ -212,6 +212,16 @@
     });
   }
 
+  async function appendHistoryRow(row) {
+    const sheetName = config.historySheet || "Progress History";
+    const existingRows = await getRange(`${sheetName}!A2:E`);
+    const lastRowIndex = existingRows.reduce((lastIndex, existingRow, index) => {
+      return existingRow.some(value => String(value || "").trim()) ? index : lastIndex;
+    }, -1);
+    const rowNumber = lastRowIndex + 3;
+    return updateRange(`${sheetName}!A${rowNumber}:E${rowNumber}`, [row]);
+  }
+
   async function ensureHeaders(sheetName, expectedHeaders) {
     const existing = await getRange(`${sheetName}!A1:${columnLetter(expectedHeaders.length)}1`);
     if (!existing.length || !existing[0].some(value => String(value || "").trim())) {
@@ -566,7 +576,7 @@
         await appendRange(`${config.goalsSheet || "Goals"}!A:N`, [row]);
       }
       if (!existing && !goal.cumulative) {
-        await appendRange(`${config.historySheet || "Progress History"}!A:E`, [[goal.id, startDate, startValue, "Goal starting value", signedInUser?.email || ""]]);
+        await appendHistoryRow([goal.id, startDate, startValue, "Goal starting value", signedInUser?.email || ""]);
       }
       closeDialog();
       showToast(existing ? "Goal updated. Keep that momentum going!" : "Goal added to the shared sheet.");
@@ -706,7 +716,7 @@
     const row = [goal.id, date, value, $("progressNote").value.trim(), signedInUser?.email || ""];
     try {
       if (rowIndex === "") {
-        await appendRange(`${config.historySheet || "Progress History"}!A:E`, [row]);
+        await appendHistoryRow(row);
       } else {
         await updateRange(`${config.historySheet || "Progress History"}!A${Number(rowIndex) + 2}:E${Number(rowIndex) + 2}`, [row]);
       }
