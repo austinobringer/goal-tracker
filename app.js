@@ -23,7 +23,8 @@
     selectedGoal: "littlewins.selectedGoalId",
     search: "littlewins.goalSearch",
     statusFilter: "littlewins.goalStatusFilter",
-    page: "littlewins.currentPage"
+    page: "littlewins.currentPage",
+    competitionGoalVisibility: "littlewins.competitionGoalVisibility"
   };
 
   const connectPanel = $("connectPanel");
@@ -55,6 +56,25 @@
       localStorage.removeItem(key);
     } catch (error) {
       // Preferences are optional; sign-out should still complete.
+    }
+  }
+
+  function readCompetitionGoalVisibility(goalId) {
+    try {
+      const saved = JSON.parse(localStorage.getItem(PREFERENCE_KEYS.competitionGoalVisibility) || "{}");
+      return saved[goalId] !== false;
+    } catch (error) {
+      return true;
+    }
+  }
+
+  function writeCompetitionGoalVisibility(goalId, visible) {
+    try {
+      const saved = JSON.parse(localStorage.getItem(PREFERENCE_KEYS.competitionGoalVisibility) || "{}");
+      saved[goalId] = visible;
+      localStorage.setItem(PREFERENCE_KEYS.competitionGoalVisibility, JSON.stringify(saved));
+    } catch (error) {
+      showNotice("Your browser blocked chart preferences, so this visibility setting will not persist.");
     }
   }
 
@@ -743,11 +763,11 @@
     const grid = $("competitionsGrid");
     grid.innerHTML = competitions.map(competition => {
       const linked = goals.filter(goal => goal.competition_id === competition.id);
-      const avg = linked.length ? Math.round(linked.reduce((sum, goal) => sum + percent(goal), 0) / linked.length) : 0;
+      const progress = competitionTimeProgress(competition);
       return `<button class="competition-card" type="button" data-competition-id="${safeText(competition.id)}">
         <span class="competition-icon">◎</span><span class="competition-card-copy"><strong>${safeText(competition.name)}</strong>
         <small>${safeText(dateLabel(competition.start_date, ""))} – ${safeText(dateLabel(competition.end_date, ""))}</small>
-        <span class="competition-progress"><i style="width:${avg}%"></i></span><small>${linked.length} goal${linked.length === 1 ? "" : "s"} · ${avg}% average progress</small></span>
+        <span class="competition-progress"><i style="width:${progress}%"></i></span><small>${linked.length} goal${linked.length === 1 ? "" : "s"} · ${progress}% of challenge elapsed</small></span>
       </button>`;
     }).join("");
     grid.classList.toggle("hidden", competitions.length === 0);
@@ -759,16 +779,17 @@
     if (!competition) return;
     const linked = goals.filter(goal => goal.competition_id === id);
     const participants = [...new Set(linked.map(goal => goal.owner_email).filter(Boolean))];
-    const average = linked.length ? Math.round(linked.reduce((sum, goal) => sum + percent(goal), 0) / linked.length) : 0;
+    const timeProgress = competitionTimeProgress(competition);
     const completed = linked.filter(goal => percent(goal) >= 100).length;
     const daysRemaining = Math.max(0, Math.ceil((new Date(`${competition.end_date}T12:00:00`) - new Date()) / 86400000));
+    $("competitionDetail").dataset.competitionId = competition.id;
     $("competitionDetail").innerHTML = `<button class="competition-back-button" id="closeCompetitionDetail" type="button">← All competitions</button>
       <div class="competition-detail-header"><div><p class="eyebrow">Competition view</p><h2>${safeText(competition.name)}</h2><p>${safeText(competition.description || "Progress toward 100% together.")}</p></div><span class="competition-date-badge">${safeText(dateLabel(competition.start_date, ""))} – ${safeText(dateLabel(competition.end_date, ""))}</span></div>
-      <div class="competition-feature-grid"><div class="competition-feature feature-primary"><span>Team progress</span><strong>${average}%</strong><small>Average across ${linked.length} goal${linked.length === 1 ? "" : "s"}</small></div><div class="competition-feature"><span>Goals complete</span><strong>${completed}/${linked.length}</strong><small>At 100% target</small></div><div class="competition-feature"><span>Time remaining</span><strong>${daysRemaining}</strong><small>Days in competition</small></div><div class="competition-feature"><span>Participants</span><strong>${participants.length}</strong><small>People contributing</small></div></div>
+      <div class="competition-feature-grid"><div class="competition-feature feature-primary"><span>Team progress</span><strong>${timeProgress}%</strong><small>Challenge time elapsed</small></div><div class="competition-feature"><span>Goals complete</span><strong>${completed}/${linked.length}</strong><small>At 100% target</small></div><div class="competition-feature"><span>Time remaining</span><strong>${daysRemaining}</strong><small>Days in competition</small></div><div class="competition-feature"><span>Participants</span><strong>${participants.length}</strong><small>People contributing</small></div></div>
       <div class="chart-meta"><span>Progress toward 100% target</span><span>${participants.length} participant${participants.length === 1 ? "" : "s"}</span></div>
       ${renderCompetitionChart(competition, linked)}
       ${renderCompetitionLegend(linked)}
-      <div class="competition-sliders"><div class="detail-section-heading"><div><p class="eyebrow">At a glance</p><h3>Goal progress</h3></div><span>Current progress toward each goal</span></div>${linked.length ? linked.map(renderCompetitionSlider).join("") : `<p class="competition-no-goals">No goals are linked to this competition yet.</p>`}</div>`;
+      <div class="competition-sliders"><div class="detail-section-heading"><div><p class="eyebrow">At a glance</p><h3>Goal progress</h3></div><span>Current progress toward each goal</span></div>${renderCompetitionSliders(linked)}</div>`;
     $("competitionDetail").classList.remove("hidden");
     $("competitionsGrid").classList.add("hidden");
     $("competitionEmptyState").classList.add("hidden");
@@ -778,13 +799,43 @@
     });
   }
 
+  function competitionTimeProgress(competition) {
+    const start = new Date(`${String(competition.start_date).slice(0, 10)}T00:00:00`).getTime();
+    const end = new Date(`${String(competition.end_date).slice(0, 10)}T23:59:59`).getTime();
+    if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) return 0;
+    return Math.max(0, Math.min(100, Math.round((Date.now() - start) / (end - start) * 100)));
+  }
+
+  function groupCompetitionGoals(linked) {
+    return linked.reduce((groups, goal) => {
+      const owner = goal.owner_email || "Unknown user";
+      const group = groups.find(item => item.owner === owner);
+      if (group) group.goals.push(goal);
+      else groups.push({ owner, goals: [goal] });
+      return groups;
+    }, []);
+  }
+
   function renderCompetitionLegend(linked) {
-    return `<div class="competition-legend"><div class="legend-heading">Chart legend</div>${linked.map((goal, index) => `<div class="legend-item"><i style="background:${["#7c5cff", "#27d3a2", "#ff8c69", "#5aa9ff", "#f5c451"][index % 5]}"></i><span><strong>${safeText(goal.owner_email || "Unknown user")}</strong><small>${safeText(goal.name)}</small></span></div>`).join("")}</div>`;
+    return `<div class="competition-legend"><div class="legend-heading">Chart legend · select goals to show on graph</div>${groupCompetitionGoals(linked).map(group => `<div class="legend-group"><strong class="legend-user">${safeText(group.owner)}</strong>${group.goals.map(goal => {
+      const color = competitionGoalColor(linked, goal);
+      return `<label class="legend-item"><input type="checkbox" data-competition-goal-visibility="${safeText(goal.id)}" ${readCompetitionGoalVisibility(goal.id) ? "checked" : ""}><i style="background:${color}"></i><span><strong>${safeText(goal.name)}</strong><small>${safeText(fmtNumber(latestProgress(goal), goal.unit))} of ${safeText(fmtNumber(goal.end_value, goal.unit))}</small></span></label>`;
+    }).join("")}</div>`).join("")}</div>`;
+  }
+
+  function competitionGoalColor(linked, goal) {
+    const colors = ["#7c5cff", "#27d3a2", "#ff8c69", "#5aa9ff", "#f5c451"];
+    return colors[Math.max(0, linked.indexOf(goal)) % colors.length];
+  }
+
+  function renderCompetitionSliders(linked) {
+    if (!linked.length) return `<p class="competition-no-goals">No goals are linked to this competition yet.</p>`;
+    return groupCompetitionGoals(linked).map(group => `<div class="competition-slider-group"><h4>${safeText(group.owner)}</h4>${group.goals.map(renderCompetitionSlider).join("")}</div>`).join("");
   }
 
   function renderCompetitionSlider(goal) {
     const progress = percent(goal);
-    return `<div class="competition-slider-row"><div class="competition-slider-label"><span><strong>${safeText(goal.owner_email || "Unknown user")}</strong><small>${safeText(goal.name)}</small></span><b>${progress}%</b></div><div class="competition-slider-track"><div style="width:${progress}%"></div><span class="slider-marker" style="left:${progress}%"></span></div><div class="competition-slider-meta"><span>${safeText(fmtNumber(latestProgress(goal), goal.unit))}</span><span>Target ${safeText(fmtNumber(goal.end_value, goal.unit))}</span></div></div>`;
+    return `<div class="competition-slider-row"><div class="competition-slider-label"><span><strong>${safeText(goal.name)}</strong></span><b>${progress}%</b></div><div class="competition-slider-track"><div style="width:${progress}%"></div><span class="slider-marker" style="left:${progress}%"></span></div><div class="competition-slider-meta"><span>${safeText(fmtNumber(latestProgress(goal), goal.unit))}</span><span>Target ${safeText(fmtNumber(goal.end_value, goal.unit))}</span></div></div>`;
   }
 
   function renderCompetitionChart(competition, linked) {
@@ -794,7 +845,7 @@
     const end = new Date(`${competition.end_date}T12:00:00`).getTime();
     const x = date => left + Math.max(0, Math.min(1, (new Date(`${String(date).slice(0, 10)}T12:00:00`).getTime() - start) / Math.max(1, end - start))) * plotWidth;
     const y = value => top + (100 - value) / 100 * plotHeight;
-    const lines = linked.map((goal, index) => {
+    const lines = linked.filter(goal => readCompetitionGoalVisibility(goal.id)).map(goal => {
       const entries = historyRows.filter(row => String(row[0] || "") === goal.id).sort((a, b) => String(a[1]).localeCompare(String(b[1])));
       let runningValue = goal.start_value;
       const points = [[goal.start_date, 0], ...entries.map(row => {
@@ -802,8 +853,8 @@
         return [row[1], Math.max(0, Math.min(100, (runningValue - goal.start_value) / (goal.end_value - goal.start_value) * 100))];
       })];
       const coords = points.map(point => `${x(point[0]).toFixed(1)},${y(point[1]).toFixed(1)}`).join(" ");
-      const color = ["#7c5cff", "#27d3a2", "#ff8c69", "#5aa9ff", "#f5c451"][index % 5];
-      return `<polyline points="${coords}" fill="none" stroke="${color}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>`;
+      const color = competitionGoalColor(linked, goal);
+      return `<polyline points="${coords}" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>`;
     }).join("");
     return `<div class="chart-shell"><svg viewBox="0 0 ${width} ${height}" role="img" aria-label="Progress chart for ${safeText(competition.name)}">
       <line x1="${left}" y1="${y(0)}" x2="${width - right}" y2="${y(0)}" class="chart-axis"/><line x1="${left}" y1="${y(50)}" x2="${width - right}" y2="${y(50)}" class="chart-grid"/><line x1="${left}" y1="${y(100)}" x2="${width - right}" y2="${y(100)}" class="chart-grid"/>
@@ -900,6 +951,12 @@
   $("competitionsGrid").addEventListener("click", event => {
     const card = event.target.closest("[data-competition-id]");
     if (card) showCompetition(card.dataset.competitionId);
+  });
+  $("competitionDetail").addEventListener("change", event => {
+    const checkbox = event.target.closest("[data-competition-goal-visibility]");
+    if (!checkbox) return;
+    writeCompetitionGoalVisibility(checkbox.dataset.competitionGoalVisibility, checkbox.checked);
+    showCompetition($("competitionDetail").dataset.competitionId);
   });
   $("goalsGrid").addEventListener("click", handleGoalAction);
   $("goalDetail").addEventListener("click", handleGoalAction);
