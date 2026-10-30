@@ -296,8 +296,9 @@
           favorite: String(row[12] || "").toLowerCase() === "true",
           cumulative: String(row[13] || "").toLowerCase() === "true"
         })).filter(goal => goal.status.toLowerCase() !== "deleted");
-      if (!goals.some(goal => goal.id === selectedGoalId)) {
-        selectedGoalId = goals[0]?.id || "";
+      const ownGoalsAfterLoad = myGoals();
+      if (!ownGoalsAfterLoad.some(goal => goal.id === selectedGoalId)) {
+        selectedGoalId = ownGoalsAfterLoad[0]?.id || "";
       }
       historyRows = historyValues;
       competitions = competitionValues.filter(row => row.some(value => String(value || "").trim())).map(row => ({
@@ -320,6 +321,16 @@
   function numberOrZero(value) {
     const number = Number(value);
     return Number.isFinite(number) ? number : 0;
+  }
+
+  function isOwnGoal(goal) {
+    const owner = String(goal.owner_email || "").trim().toLowerCase();
+    const me = String(signedInUser?.email || "").trim().toLowerCase();
+    return Boolean(me) && owner === me;
+  }
+
+  function myGoals() {
+    return goals.filter(isOwnGoal);
   }
 
   function safeText(value) {
@@ -364,8 +375,11 @@
   }
 
   function render() {
-    const active = goals.filter(goal => goal.status.toLowerCase() === "active" && !isCompleted(goal));
-    const completed = goals.filter(isCompleted);
+    // The Goals page only shows goals owned by the signed-in user.
+    // (The Competitions page continues to use the full `goals` list.)
+    const ownGoals = myGoals();
+    const active = ownGoals.filter(goal => goal.status.toLowerCase() === "active" && !isCompleted(goal));
+    const completed = ownGoals.filter(isCompleted);
     const today = new Date(); today.setHours(0, 0, 0, 0);
     const soon = new Date(today); soon.setDate(soon.getDate() + 14);
     const dueSoon = active.filter(goal => {
@@ -379,7 +393,7 @@
 
     const filter = $("statusFilter").value;
     const query = $("searchInput").value.trim().toLowerCase();
-    let visible = goals.filter(goal => {
+    let visible = ownGoals.filter(goal => {
       if (filter === "active" && (goal.status.toLowerCase() !== "active" || isCompleted(goal))) return false;
       if (filter === "completed" && !isCompleted(goal)) return false;
       return `${goal.name} ${goal.description} ${goal.owner_email}`.toLowerCase().includes(query);
@@ -389,12 +403,12 @@
     $("goalListCount").textContent = `${visible.length} goal${visible.length === 1 ? "" : "s"}`;
     if (!visible.some(goal => goal.id === selectedGoalId)) selectedGoalId = visible[0]?.id || "";
     writePreference(PREFERENCE_KEYS.selectedGoal, selectedGoalId);
-    renderGoalDetail(goals.find(goal => goal.id === selectedGoalId));
+    renderGoalDetail(ownGoals.find(goal => goal.id === selectedGoalId));
     $("emptyState").classList.toggle("hidden", visible.length > 0);
     $("goalsGrid").classList.toggle("hidden", visible.length === 0);
-    $("emptyState").querySelector("h3").textContent = goals.length ? "No goals found." : "Your next chapter starts here.";
-    $("emptyState").querySelector("p").textContent = goals.length ? "Try another search or filter to find what you're looking for." : "Add a goal, pick a first step, and give it somewhere to grow.";
-    $("emptyNewGoalButton").classList.toggle("hidden", goals.length > 0);
+    $("emptyState").querySelector("h3").textContent = ownGoals.length ? "No goals found." : "Your next chapter starts here.";
+    $("emptyState").querySelector("p").textContent = ownGoals.length ? "Try another search or filter to find what you're looking for." : "Add a goal, pick a first step, and give it somewhere to grow.";
+    $("emptyNewGoalButton").classList.toggle("hidden", ownGoals.length > 0);
   }
 
   function renderGoalCard(goal, index) {
